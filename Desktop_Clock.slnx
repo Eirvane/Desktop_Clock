@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Desktop_Clock/Desktop_Clock.vcxproj" Id="cc064a4e-f382-4232-898b-1f888d4d99a6" />
+</Solution>
