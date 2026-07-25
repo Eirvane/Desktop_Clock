@@ -112,18 +112,23 @@ void Config_Save(void)
     /* 窗口配置 */
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.x);
     WritePrivateProfileStringW(L"Window", L"X", buf, configPath);
+
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.y);
     WritePrivateProfileStringW(L"Window", L"Y", buf, configPath);
+
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.width);
     WritePrivateProfileStringW(L"Window", L"Width", buf, configPath);
+
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.height);
     WritePrivateProfileStringW(L"Window", L"Height", buf, configPath);
 
     /* 外观配置 */
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.fontSize);
     WritePrivateProfileStringW(L"Appearance", L"FontSize", buf, configPath);
+
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.alpha);
     WritePrivateProfileStringW(L"Appearance", L"Alpha", buf, configPath);
+
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.showSeconds);
     WritePrivateProfileStringW(L"Appearance", L"ShowSeconds", buf, configPath);
 

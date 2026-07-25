@@ -279,6 +279,31 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         }
         return 0;
 
+    case WM_RBUTTONUP:
+    {
+        /* 右键弹出极简菜单：仅提供"退出" */
+        POINT pt;
+        pt.x = GET_X_LPARAM(lParam);
+        pt.y = GET_Y_LPARAM(lParam);
+        ClientToScreen(hWnd, &pt);
+
+        HMENU hMenu = CreatePopupMenu();
+        AppendMenuW(hMenu, MF_STRING, 1, L"退出");
+
+        int cmd = TrackPopupMenu(
+            hMenu,
+            TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+            pt.x, pt.y, 0, hWnd, NULL
+        );
+
+        DestroyMenu(hMenu);
+
+        if (cmd == 1) {
+            DestroyWindow(hWnd);
+        }
+    }
+    return 0;
+
     case WM_DESTROY:
         /* 退出前移除托盘图标并持久化配置 */
         TrayIcon_Remove(hWnd);
