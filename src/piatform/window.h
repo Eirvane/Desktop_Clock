@@ -9,8 +9,11 @@
 /* 托盘图标相关常量 */
 #define WM_TRAYICON        (WM_USER + 100)
 #define ID_TRAY_ICON       1001
-#define ID_MENU_SETTINGS   2001
-#define ID_MENU_EXIT       2002
+
+/* 右键菜单命令ID：颜色子菜单两项 + 退出 */
+#define ID_MENU_COLOR_VALUE  2001   /* 颜色值：手动输入 HEX */
+#define ID_MENU_COLOR_PANEL  2002   /* 颜色面板：系统颜色选择对话框 */
+#define ID_MENU_EXIT         2003   /* 退出程序 */
 
 /* 注册窗口类 */
 ATOM RegisterClockWindowClass(HINSTANCE hInstance);
