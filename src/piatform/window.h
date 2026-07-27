@@ -15,6 +15,11 @@
 #define ID_MENU_COLOR_PANEL  2002   /* 颜色面板：系统颜色选择对话框 */
 #define ID_MENU_EXIT         2003   /* 退出程序 */
 
+/* 字体菜单动态ID范围（支持最多100个字体文件） */
+#define ID_MENU_FONT_BASE   3000
+#define ID_MENU_FONT_MAX    3099
+#define MAX_FONT_MENU_ITEMS 100
+
 /* 注册窗口类 */
 ATOM RegisterClockWindowClass(HINSTANCE hInstance);
 
