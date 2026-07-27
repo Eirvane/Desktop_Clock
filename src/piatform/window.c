@@ -23,9 +23,6 @@
 #define CVI_WINDOW_STYLE          (WS_CAPTION | WS_SYSMENU | WS_VISIBLE) /* 窗口样式：带标题栏、系统菜单、可见；可改为 WS_DLGFRAME 等 */
 #define CVI_WINDOW_EX_STYLE       WS_EX_DLGMODALFRAME                   /* 扩展样式：对话框边框，营造浮动面板感；可改为 0 或 WS_EX_TOOLWINDOW */
 
-/* ---- 窗口背景色（系统颜色索引） ---- */
-#define CVI_BG_COLOR_REF          (COLOR_BTNFACE + 1)  /* 对话框背景色：COLOR_BTNFACE+1 为标准按钮面色；可改为 COLOR_WINDOW+1、COLOR_3DFACE+1 等 */
-
 /* ---- 窗口圆角 ---- */
 #define CVI_CORNER_RADIUS         12      /* 窗口圆角半径（像素），0 表示直角；建议 8~16 */
 /* 注：Win11 下会额外通过 DWM 启用系统级圆角+阴影；Win7/10 则使用 GDI Region 圆角 */
@@ -35,7 +32,7 @@
 #define CVI_UI_FONT_SIZE_PT       12                    /* UI 字体字号（磅/Point），建议 9~14 */
 #define CVI_UI_FONT_WEIGHT        FW_NORMAL             /* 字重：FW_NORMAL(400) 常规，FW_BOLD(700) 粗体，FW_LIGHT(300) 细体 */
 
-/* ---- 输入框专用字体（等宽，方便对齐 HEX 字符） ---- */
+/* ---- 输入框专用字体（等宽，方便对齐 HEX 字符 A-F 与数字） ---- */
 #define CVI_EDIT_FONT_NAME        L"Consolas"           /* 等宽字体：也可改为 L"Courier New"、L"Lucida Console"、L"JetBrains Mono" */
 #define CVI_EDIT_FONT_SIZE_PT     12                    /* 输入框字号（磅），建议与 UI 字号相同或略大 1~2pt */
 #define CVI_EDIT_FONT_WEIGHT      FW_NORMAL             /* 输入框字重；如需高亮可改为 FW_BOLD */
@@ -305,7 +302,9 @@ static void ColorValueInput_Show(HWND hParent)
     wcex.lpfnWndProc = ColorValueInputProc;
     wcex.hInstance = g_hInstance;
     wcex.hCursor = LoadCursorW(NULL, IDC_ARROW);
-    wcex.hbrBackground = (HBRUSH)(CVI_BG_COLOR_REF);  /* 使用配置区定义的系统背景色 */
+    /* CVI_BG_COLOR_REF 未在项目中定义；使用系统默认窗口背景色作为回退值。
+       (HBRUSH)(COLOR_WINDOW+1) 是为 WNDCLASSEX 指定系统颜色画笔的规范用法。 */
+    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszClassName = L"ColorValueInputClass";
     RegisterClassExW(&wcex);
 
