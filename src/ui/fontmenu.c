@@ -127,12 +127,14 @@ void HandleFontMenuCommand(UINT cmdId)
     _snwprintf_s(filePath, MAX_PATH, _TRUNCATE,
         L"%s\\%s", fontFolder, g_fontMenuItems[index].fileName);
 
-    /* 加载到当前进程，不写入系统字体库 */
+    /* 加载到 GDI 字体表（供系统回退路径使用） */
     int added = AddFontResourceExW(filePath, FR_PRIVATE, 0);
-    (void)added; /* 静默容错：GDI+ 可能已通过其他途径识别 */
+    (void)added;
 
-    /* 更新配置并重绘 */
+    /* ========== 以下两行缺一不可 ========== */
+    wcsncpy_s(g_config.fontFile, MAX_PATH, filePath, _TRUNCATE);  /* ← 必须有 */
     wcsncpy_s(g_config.fontName, 64, g_fontMenuItems[index].displayName, _TRUNCATE);
+
     Config_Save();
     UpdateLayeredWindowContent(g_hClockWnd);
 }
