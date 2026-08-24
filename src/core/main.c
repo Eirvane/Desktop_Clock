@@ -9,13 +9,16 @@
 #include <windows.h>
 #include <objbase.h>
 #include <stdio.h>
-#include "window.h"
-#include "renderer.h"
-#include "config.h"
+
+/* 使用相对路径引用其他模块（若已配置 VS 附加包含目录，可去掉 ../ 前缀） */
+#include "../platform/window.h"
+#include "../graphics/renderer.h"
+#include "../utils/config.h"
+#include "../platform/trayicon.h"
 
 /* 自动链接所需的系统库 */
 #pragma comment(lib, "gdiplus.lib")
-#pragma comment(lib, "ole32.lib")    /* CoInitializeEx */
+#pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "kernel32.lib")
 #pragma comment(lib, "gdi32.lib")
@@ -29,12 +32,7 @@ int WINAPI wWinMain(
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    /*
-     * 设置高DPI感知（Per Monitor V2）。
-     * 这是 Windows 10 1703+ 推荐的方式，确保在多显示器、
-     * 不同DPI缩放下窗口尺寸和渲染不会模糊。
-     * 若系统不支持此API，则静默失败，不影响运行。
-     */
+    /* 设置高DPI感知（Per Monitor V2） */
     typedef BOOL(WINAPI* SetProcessDpiAwarenessContextProc)(DPI_AWARENESS_CONTEXT);
     HMODULE hUser32 = GetModuleHandleW(L"user32.dll");
     if (hUser32) {
@@ -85,10 +83,7 @@ int WINAPI wWinMain(
     /* 创建系统托盘图标 */
     TrayIcon_Init(hWnd, hInstance);
 
-    /*
-     * 设置定时器：每秒触发一次 WM_TIMER。
-     * 这是桌面时钟最低功耗的刷新策略（无需60fps游戏循环）。
-     */
+    /* 设置定时器：每秒触发一次 WM_TIMER */
     SetTimer(hWnd, TIMER_ID_UPDATE, 1000, NULL);
 
     /* 标准Win32消息循环 */

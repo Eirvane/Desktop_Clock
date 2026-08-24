@@ -111,7 +111,8 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\C++\Desktop_Clock\src\core;D:\C++\Desktop_Clock\src\graphics;D:\C++\Desktop_Clock\src\piatform;D:\C++\Desktop_Clock\src\utils;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\C++\Desktop_Clock\src\utils;D:\C++\Desktop_Clock\src\ui;D:\C++\Desktop_Clock\src\platform;D:\C++\Desktop_Clock\src\graphics;D:\C++\Desktop_Clock\src\core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -130,7 +131,8 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\C++\Desktop_Clock\src\core;D:\C++\Desktop_Clock\src\graphics;D:\C++\Desktop_Clock\src\piatform;D:\C++\Desktop_Clock\src\utils;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\C++\Desktop_Clock\src\utils;D:\C++\Desktop_Clock\src\ui;D:\C++\Desktop_Clock\src\platform;D:\C++\Desktop_Clock\src\graphics;D:\C++\Desktop_Clock\src\core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -143,16 +145,27 @@
   <ItemGroup>
     <ClCompile Include="..\src\core\main.c" />
     <ClCompile Include="..\src\graphics\renderer.cpp" />
-    <ClCompile Include="..\src\piatform\window.c" />
+    <ClCompile Include="..\src\platform\trayicon.c" />
+    <ClCompile Include="..\src\platform\window.c" />
+    <ClCompile Include="..\src\ui\colorpicker.c" />
+    <ClCompile Include="..\src\ui\fontmenu.c" />
     <ClCompile Include="..\src\utils\config.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\src\graphics\renderer.h" />
-    <ClInclude Include="..\src\piatform\window.h" />
-    <ClInclude Include="..\src\utils\config.h" />
+    <ClCompile Include="..\src\utils\utils.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\x64\Debug\clock.ini" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\graphics\renderer.h" />
+    <ClInclude Include="..\src\platform\trayicon.h" />
+    <ClInclude Include="..\src\platform\window.h" />
+    <ClInclude Include="..\src\ui\colorpicker.h" />
+    <ClInclude Include="..\src\ui\fontmenu.h" />
+    <ClInclude Include="..\src\utils\config.h" />
+    <ClInclude Include="..\src\utils\utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
