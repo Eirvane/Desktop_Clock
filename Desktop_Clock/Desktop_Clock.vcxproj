@@ -167,6 +167,26 @@
     <ClInclude Include="..\src\utils\config.h" />
     <ClInclude Include="..\src\utils\utils.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Font Include="..\x64\Debug\fonts\Abel-Regular-2.ttf" />
+    <Font Include="..\x64\Debug\fonts\BebasNeue-1.otf" />
+    <Font Include="..\x64\Debug\fonts\Comfortaa-Bold-2.ttf" />
+    <Font Include="..\x64\Debug\fonts\DepartureMono Nerd Font Propo Essence.ttf" />
+    <Font Include="..\x64\Debug\fonts\DS-DIGIB-2.ttf" />
+    <Font Include="..\x64\Debug\fonts\DS-DIGIT-4.ttf" />
+    <Font Include="..\x64\Debug\fonts\NationalPark-Heavy.otf" />
+    <Font Include="..\x64\Debug\fonts\NationalPark-Regular-2.otf" />
+    <Font Include="..\x64\Debug\fonts\OPPO Sans 4.0.ttf" />
+    <Font Include="..\x64\Debug\fonts\Pixelify Sans Medium Essence.ttf" />
+    <Font Include="..\x64\Debug\fonts\ProFont IIx Nerd Font Essence.ttf" />
+    <Font Include="..\x64\Debug\fonts\RecMonoCasual Nerd Font Mono Essence.ttf" />
+    <Font Include="..\x64\Debug\fonts\Rousseau-Deco-2.ttf" />
+    <Font Include="..\x64\Debug\fonts\Rubik Marker Hatch Essence.ttf" />
+    <Font Include="..\x64\Debug\fonts\Rubik Puddles Essence.ttf" />
+    <Font Include="..\x64\Debug\fonts\SC Regular.ttf" />
+    <Font Include="..\x64\Debug\fonts\Terminess Nerd Font Propo Essence.ttf" />
+    <Font Include="..\x64\Debug\fonts\Wallpoet Essence.ttf" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
