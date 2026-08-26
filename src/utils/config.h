@@ -19,12 +19,10 @@ extern "C" {
         BYTE    alpha;
         BOOL    showSeconds;
         BOOL    topMost;
+        BOOL    movable;        /* 【新增】FALSE=固定, TRUE=移动 */
         WCHAR   fontName[64];
-
-        /* 【新增】字体文件路径，供 renderer 用 PrivateFontCollection 加载 */
         WCHAR   fontFile[MAX_PATH];
 
-        /* 方框配置 */
         BOOL     showFrame;
         int      framePadding;
         int      frameBorderWidth;
