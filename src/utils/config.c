@@ -22,21 +22,19 @@ void Config_SetDefaults(void)
     g_config.height = 120;
     g_config.fontSize = 56;
     g_config.textColor = RGB(255, 255, 255);
-    g_config.alpha = 240;
+    g_config.alpha = 255;
     g_config.showSeconds = TRUE;
     g_config.topMost = TRUE;
+    g_config.movable = FALSE;         /* 【新增】默认固定状态 */
     wcscpy_s(g_config.fontName, 64, L"Microsoft YaHei UI");
-
-    /* 【新增】默认无自定义字体文件 */
     g_config.fontFile[0] = L'\0';
 
-    /* 方框默认值 */
-    g_config.showFrame = TRUE;
-    g_config.framePadding = 12;
+    g_config.showFrame = FALSE;
+    g_config.framePadding = 3;
     g_config.frameBorderWidth = 2;
     g_config.frameColor = RGB(255, 255, 255);
     g_config.frameFillColor = RGB(20, 20, 20);
-    g_config.frameAlpha = 100;
+    g_config.frameAlpha = 180;
 }
 
 static COLORREF ParseHexColor(const WCHAR* hexStr)
@@ -61,13 +59,13 @@ void Config_Load(void)
     GetConfigFilePath(configPath, MAX_PATH);
     Config_SetDefaults();
 
-    /* 窗口配置 */
     g_config.x = GetPrivateProfileIntW(L"Window", L"X", g_config.x, configPath);
     g_config.y = GetPrivateProfileIntW(L"Window", L"Y", g_config.y, configPath);
     g_config.width = GetPrivateProfileIntW(L"Window", L"Width", g_config.width, configPath);
     g_config.height = GetPrivateProfileIntW(L"Window", L"Height", g_config.height, configPath);
+    g_config.topMost = GetPrivateProfileIntW(L"Window", L"TopMost", g_config.topMost, configPath);
+    g_config.movable = GetPrivateProfileIntW(L"Window", L"Movable", g_config.movable, configPath); /* 【新增】 */
 
-    /* 外观配置 */
     g_config.fontSize = GetPrivateProfileIntW(L"Appearance", L"FontSize", g_config.fontSize, configPath);
     g_config.alpha = (BYTE)GetPrivateProfileIntW(L"Appearance", L"Alpha", g_config.alpha, configPath);
     g_config.showSeconds = GetPrivateProfileIntW(L"Appearance", L"ShowSeconds", g_config.showSeconds, configPath);
@@ -76,11 +74,8 @@ void Config_Load(void)
     g_config.textColor = ParseHexColor(buf);
 
     GetPrivateProfileStringW(L"Appearance", L"FontName", g_config.fontName, g_config.fontName, 64, configPath);
-
-    /* 【新增】读取字体文件路径 */
     GetPrivateProfileStringW(L"Appearance", L"FontFile", L"", g_config.fontFile, MAX_PATH, configPath);
 
-    /* 方框配置 */
     g_config.showFrame = GetPrivateProfileIntW(L"Frame", L"ShowFrame", g_config.showFrame, configPath);
     g_config.framePadding = GetPrivateProfileIntW(L"Frame", L"FramePadding", g_config.framePadding, configPath);
     g_config.frameBorderWidth = GetPrivateProfileIntW(L"Frame", L"FrameBorderWidth", g_config.frameBorderWidth, configPath);
@@ -100,7 +95,6 @@ void Config_Save(void)
     WCHAR configPath[MAX_PATH];
     GetConfigFilePath(configPath, MAX_PATH);
 
-    /* 窗口配置 */
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.x);
     WritePrivateProfileStringW(L"Window", L"X", buf, configPath);
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.y);
@@ -109,8 +103,11 @@ void Config_Save(void)
     WritePrivateProfileStringW(L"Window", L"Width", buf, configPath);
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.height);
     WritePrivateProfileStringW(L"Window", L"Height", buf, configPath);
+    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.topMost);
+    WritePrivateProfileStringW(L"Window", L"TopMost", buf, configPath);
+    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.movable);      /* 【新增】 */
+    WritePrivateProfileStringW(L"Window", L"Movable", buf, configPath); /* 【新增】 */
 
-    /* 外观配置 */
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.fontSize);
     WritePrivateProfileStringW(L"Appearance", L"FontSize", buf, configPath);
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.alpha);
@@ -120,13 +117,9 @@ void Config_Save(void)
 
     ColorToHex(g_config.textColor, buf, 256);
     WritePrivateProfileStringW(L"Appearance", L"TextColor", buf, configPath);
-
     WritePrivateProfileStringW(L"Appearance", L"FontName", g_config.fontName, configPath);
-
-    /* 【新增】保存字体文件路径 */
     WritePrivateProfileStringW(L"Appearance", L"FontFile", g_config.fontFile, configPath);
 
-    /* 方框配置 */
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.showFrame);
     WritePrivateProfileStringW(L"Frame", L"ShowFrame", buf, configPath);
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.framePadding);

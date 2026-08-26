@@ -10,20 +10,24 @@
 
 #pragma comment(lib, "dwmapi.lib")
 
-/* ============================================================
- * 全局状态
- * ============================================================ */
+#ifndef DWMWA_WINDOW_CORNER_PREFERENCE
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
+#endif
+#ifndef DWMWCP_DEFAULT
+#define DWMWCP_DEFAULT    0
+#endif
+#ifndef DWMWCP_DONOTROUND
+#define DWMWCP_DONOTROUND 1
+#endif
+#ifndef DWMWCP_ROUND
+#define DWMWCP_ROUND      2
+#endif
+
 HINSTANCE g_hInstance = NULL;
 HWND      g_hClockWnd = NULL;
 
 static POINT g_dragStartPt = { 0 };
 static RECT  g_dragStartRc = { 0 };
-static BOOL  g_mouseHovering = FALSE;
-static BOOL  g_mouseTracking = FALSE;
-
-/* ------------------------------------------------------------------ */
-/* 窗口创建与注册                                                      */
-/* ------------------------------------------------------------------ */
 
 ATOM RegisterClockWindowClass(HINSTANCE hInstance)
 {
@@ -46,6 +50,10 @@ HWND CreateClockWindow(HINSTANCE hInstance)
     if (g_config.topMost) {
         dwExStyle |= WS_EX_TOPMOST;
     }
+    /* 【关键】已固定状态：添加 WS_EX_TRANSPARENT，鼠标穿透到下层窗口 */
+    if (!g_config.movable) {
+        dwExStyle |= WS_EX_TRANSPARENT;
+    }
 
     HWND hWnd = CreateWindowExW(
         dwExStyle,
@@ -61,17 +69,13 @@ HWND CreateClockWindow(HINSTANCE hInstance)
 
     if (hWnd) {
         g_hClockWnd = hWnd;
-        /* Win11 / Win10 20H1+ 圆角 */
-        int cornerPref = DWMWCP_ROUND;
+        /* 移动模式启用圆角，固定模式禁用（避免实线边缘） */
+        int cornerPref = g_config.movable ? DWMWCP_ROUND : DWMWCP_DONOTROUND;
         DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPref, sizeof(cornerPref));
     }
 
     return hWnd;
 }
-
-/* ------------------------------------------------------------------ */
-/* 分层窗口渲染                                                        */
-/* ------------------------------------------------------------------ */
 
 void UpdateLayeredWindowContent(HWND hWnd)
 {
@@ -124,10 +128,6 @@ void UpdateLayeredWindowContent(HWND hWnd)
     ReleaseDC(NULL, hdcScreen);
 }
 
-/* ------------------------------------------------------------------ */
-/* 主窗口过程                                                          */
-/* ------------------------------------------------------------------ */
-
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
@@ -157,6 +157,17 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
             AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hColorMenu, L"颜色");
             AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
 
+            /* 【修改】菜单显示当前状态：正在移动 / 已固定 */
+            WCHAR toggleText[32];
+            if (g_config.movable) {
+                wcscpy_s(toggleText, 32, L"正在移动");
+            }
+            else {
+                wcscpy_s(toggleText, 32, L"已固定");
+            }
+            AppendMenuW(hMenu, MF_STRING, ID_MENU_TOGGLE_MOVE, toggleText);
+            AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+
             AppendMenuW(hMenu, MF_STRING, ID_MENU_EXIT, L"退出");
 
             POINT pt;
@@ -180,6 +191,32 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
             else if (cmd == ID_MENU_COLOR_PANEL) {
                 ColorPicker_Show(g_hClockWnd);
             }
+            else if (cmd == ID_MENU_TOGGLE_MOVE) {
+                g_config.movable = !g_config.movable;
+                Config_Save();
+
+                /* 【关键】动态修改窗口扩展样式：切换鼠标穿透状态 */
+                LONG_PTR exStyle = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+                if (g_config.movable) {
+                    /* 切换到移动模式：移除透明，开始接收鼠标 */
+                    exStyle &= ~WS_EX_TRANSPARENT;
+                }
+                else {
+                    /* 切换到固定模式：添加透明，鼠标穿透到下层 */
+                    exStyle |= WS_EX_TRANSPARENT;
+                }
+                SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
+
+                /* 同步更新 DWM 圆角 */
+                int cornerPref = g_config.movable ? DWMWCP_ROUND : DWMWCP_DONOTROUND;
+                DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPref, sizeof(cornerPref));
+
+                /* 强制刷新窗口样式（必须带 SWP_FRAMECHANGED） */
+                SetWindowPos(hWnd, NULL, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+
+                UpdateLayeredWindowContent(g_hClockWnd);
+            }
             else if (cmd >= ID_MENU_FONT_BASE && cmd <= ID_MENU_FONT_MAX) {
                 HandleFontMenuCommand(cmd);
             }
@@ -191,13 +228,16 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
 
     case WM_LBUTTONDOWN:
-        SetCapture(hWnd);
-        GetCursorPos(&g_dragStartPt);
-        GetWindowRect(hWnd, &g_dragStartRc);
+        /* 仅在移动模式下允许拖拽 */
+        if (g_config.movable) {
+            SetCapture(hWnd);
+            GetCursorPos(&g_dragStartPt);
+            GetWindowRect(hWnd, &g_dragStartRc);
+        }
         return 0;
 
     case WM_MOUSEMOVE:
-        if (GetCapture() == hWnd) {
+        if (g_config.movable && GetCapture() == hWnd) {
             POINT pt;
             GetCursorPos(&pt);
             int dx = pt.x - g_dragStartPt.x;
@@ -210,27 +250,24 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
                 SWP_NOSIZE | SWP_NOZORDER
             );
         }
-
-        if (!g_mouseTracking) {
-            TRACKMOUSEEVENT tme = { 0 };
-            tme.cbSize = sizeof(tme);
-            tme.dwFlags = TME_LEAVE;
-            tme.hwndTrack = hWnd;
-            TrackMouseEvent(&tme);
-            g_mouseTracking = TRUE;
-            g_mouseHovering = TRUE;
-        }
         return 0;
 
-    case WM_MOUSELEAVE:
-        g_mouseHovering = FALSE;
-        g_mouseTracking = FALSE;
+    case WM_LBUTTONUP:
+        if (g_config.movable && GetCapture() == hWnd) {
+            ReleaseCapture();
+            RECT rc;
+            GetWindowRect(hWnd, &rc);
+            g_config.x = rc.left;
+            g_config.y = rc.top;
+        }
         return 0;
 
     case WM_MOUSEWHEEL:
     {
-        if (!g_mouseHovering) {
-            return DefWindowProcW(hWnd, message, wParam, lParam);
+        /* 固定状态下：WS_EX_TRANSPARENT 已使鼠标穿透，本消息不会进入。
+         * 保留判断作为保险。 */
+        if (!g_config.movable) {
+            return 0;
         }
 
         int zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
@@ -242,21 +279,34 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 
         if (newSize != g_config.fontSize) {
             g_config.fontSize = newSize;
+
+            /* 窗口尺寸联动缩放 */
+            RECT rc;
+            GetWindowRect(hWnd, &rc);
+            int cx = rc.left + (rc.right - rc.left) / 2;
+            int cy = rc.top + (rc.bottom - rc.top) / 2;
+
+            int newWidth = (int)(400.0f * newSize / 56.0f);
+            int newHeight = (int)(120.0f * newSize / 56.0f);
+
+            if (newWidth < 100)  newWidth = 100;
+            if (newHeight < 40)  newHeight = 40;
+
+            int newX = cx - newWidth / 2;
+            int newY = cy - newHeight / 2;
+
+            SetWindowPos(hWnd, NULL, newX, newY, newWidth, newHeight, SWP_NOZORDER);
+
+            g_config.width = newWidth;
+            g_config.height = newHeight;
+            g_config.x = newX;
+            g_config.y = newY;
+
             Config_Save();
             UpdateLayeredWindowContent(g_hClockWnd);
         }
         return 0;
     }
-
-    case WM_LBUTTONUP:
-        if (GetCapture() == hWnd) {
-            ReleaseCapture();
-            RECT rc;
-            GetWindowRect(hWnd, &rc);
-            g_config.x = rc.left;
-            g_config.y = rc.top;
-        }
-        return 0;
 
     case WM_DESTROY:
         TrayIcon_Remove(hWnd);
