@@ -1,32 +1,25 @@
 ﻿#include "fontmenu.h"
-#include "window.h"   /* g_hClockWnd, UpdateLayeredWindowContent, ID_MENU_FONT_BASE */
+#include "window.h"
 #include "config.h"
 #include <wchar.h>
 
-#pragma comment(lib, "gdi32.lib")   /* AddFontResourceExW */
+#pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "shell32.lib")   
 
-/* 扫描结果缓存：避免每次弹出菜单都重复读取磁盘 */
 static FontMenuItem g_fontMenuItems[MAX_FONT_MENU_ITEMS];
 static int g_fontMenuItemCount = 0;
-
-/* ------------------------------------------------------------------ */
-/* 运行时动态获取字体目录（与 exe 同级目录下的 fonts 文件夹）           */
-/* ------------------------------------------------------------------ */
 
 static void GetFontsFolderPath(WCHAR* outPath, int maxLen)
 {
     WCHAR exePath[MAX_PATH] = { 0 };
     GetModuleFileNameW(NULL, exePath, MAX_PATH);
-
     WCHAR* lastSlash = wcsrchr(exePath, L'\\');
     if (lastSlash) {
         *(lastSlash + 1) = L'\0';
     }
-
     _snwprintf_s(outPath, maxLen, _TRUNCATE, L"%sfonts", exePath);
 }
 
-/* 检查扩展名是否为支持的字体格式 */
 static BOOL IsFontFileExtension(const WCHAR* ext)
 {
     if (!ext) return FALSE;
@@ -36,7 +29,6 @@ static BOOL IsFontFileExtension(const WCHAR* ext)
         _wcsicmp(ext, L".fon") == 0);
 }
 
-/* 从路径提取文件名（去扩展名），并将下划线替换为空格 */
 static void ExtractFontDisplayName(const WCHAR* filePath, WCHAR* outName, int outSize)
 {
     const WCHAR* nameStart = wcsrchr(filePath, L'\\');
@@ -55,7 +47,6 @@ static void ExtractFontDisplayName(const WCHAR* filePath, WCHAR* outName, int ou
     }
 }
 
-/* 扫描字体目录，将结果缓存到全局数组 */
 static void ScanFontsFolder(void)
 {
     g_fontMenuItemCount = 0;
@@ -90,7 +81,6 @@ static void ScanFontsFolder(void)
     FindClose(hFind);
 }
 
-/* 构建字体子菜单（动态扫描目录，当前选中项打勾） */
 HMENU BuildFontSubmenu(void)
 {
     HMENU hFontMenu = CreatePopupMenu();
@@ -110,11 +100,12 @@ HMENU BuildFontSubmenu(void)
             AppendMenuW(hFontMenu, flags, g_fontMenuItems[i].id, g_fontMenuItems[i].displayName);
         }
     }
+    AppendMenuW(hFontMenu, MF_SEPARATOR, 0, NULL);
+    AppendMenuW(hFontMenu, MF_STRING, ID_MENU_OPEN_FONT_FOLDER, L"打开字体文件夹");
 
     return hFontMenu;
 }
 
-/* 加载指定字体文件（FR_PRIVATE：仅当前进程可见，退出自动卸载）并应用 */
 void HandleFontMenuCommand(UINT cmdId)
 {
     int index = (int)(cmdId - ID_MENU_FONT_BASE);
@@ -127,14 +118,23 @@ void HandleFontMenuCommand(UINT cmdId)
     _snwprintf_s(filePath, MAX_PATH, _TRUNCATE,
         L"%s\\%s", fontFolder, g_fontMenuItems[index].fileName);
 
-    /* 加载到 GDI 字体表（供系统回退路径使用） */
     int added = AddFontResourceExW(filePath, FR_PRIVATE, 0);
     (void)added;
 
-    /* ========== 以下两行缺一不可 ========== */
-    wcsncpy_s(g_config.fontFile, MAX_PATH, filePath, _TRUNCATE);  /* ← 必须有 */
+    wcsncpy_s(g_config.fontFile, MAX_PATH, filePath, _TRUNCATE);
     wcsncpy_s(g_config.fontName, 64, g_fontMenuItems[index].displayName, _TRUNCATE);
 
     Config_Save();
     UpdateLayeredWindowContent(g_hClockWnd);
+}
+void OpenFontsFolder(void)
+{
+    WCHAR fontFolder[MAX_PATH] = { 0 };
+    GetFontsFolderPath(fontFolder, MAX_PATH);
+
+    DWORD attribs = GetFileAttributesW(fontFolder);
+    if (attribs == INVALID_FILE_ATTRIBUTES || !(attribs & FILE_ATTRIBUTE_DIRECTORY)) {
+        CreateDirectoryW(fontFolder, NULL);
+    }
+    ShellExecuteW(NULL, L"explore", fontFolder, NULL, NULL, SW_SHOWNORMAL);
 }

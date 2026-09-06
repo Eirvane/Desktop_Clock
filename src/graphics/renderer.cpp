@@ -7,6 +7,12 @@ static ULONG_PTR g_gdiplusToken = 0;
 static Gdiplus::PrivateFontCollection* g_privateFonts = NULL;
 static WCHAR g_loadedFontFile[MAX_PATH] = { 0 };
 
+/* 模式与计时状态 */
+static int       g_mode = 0;
+static BOOL      g_stopwatchRunning = FALSE;
+static ULONGLONG g_stopwatchStart = 0;
+static ULONGLONG g_countdownEnd = 0;
+
 BOOL Renderer_Init(void)
 {
     Gdiplus::GdiplusStartupInput input;
@@ -40,18 +46,87 @@ void Renderer_Shutdown(void)
     }
 }
 
-static void GetTimeString(WCHAR* buffer, int bufferSize)
+/* C 接口实现 */
+extern "C" void Renderer_SetMode(int mode)
 {
-    SYSTEMTIME st;
-    GetLocalTime(&st);
-
-    if (g_config.showSeconds) {
-        swprintf_s(buffer, bufferSize, L"%02d:%02d:%02d",
-            st.wHour, st.wMinute, st.wSecond);
+    g_mode = mode;
+    if (mode == 1) {
+        g_stopwatchRunning = FALSE;   /* 切换到正计时时不自动开始 */
     }
-    else {
-        swprintf_s(buffer, bufferSize, L"%02d:%02d",
-            st.wHour, st.wMinute);
+}
+
+extern "C" void Renderer_StartStopwatch(void)
+{
+    g_stopwatchRunning = TRUE;
+    g_stopwatchStart = GetTickCount64();
+}
+
+extern "C" void Renderer_StartCountdown(int hours, int minutes, int seconds)
+{
+    ULONGLONG totalMs = ((ULONGLONG)hours * 3600ULL
+        + (ULONGLONG)minutes * 60ULL
+        + (ULONGLONG)seconds) * 1000ULL;
+    g_countdownEnd = GetTickCount64() + totalMs;
+}
+
+/* 根据当前模式生成显示字符串 */
+static void GetDisplayString(WCHAR* buffer, int bufferSize)
+{
+    if (g_mode == 0) {
+        /* 当前时间 */
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+
+        if (g_config.hourFormat == 1) {
+            int hour12 = st.wHour % 12;
+            if (hour12 == 0) hour12 = 12;
+
+            if (g_config.showSeconds) {
+                swprintf_s(buffer, bufferSize, L"%d:%02d:%02d",
+                    hour12, st.wMinute, st.wSecond);
+            }
+            else {
+                swprintf_s(buffer, bufferSize, L"%d:%02d",
+                    hour12, st.wMinute);
+            }
+        }
+        else {
+            if (g_config.showSeconds) {
+                swprintf_s(buffer, bufferSize, L"%02d:%02d:%02d",
+                    st.wHour, st.wMinute, st.wSecond);
+            }
+            else {
+                swprintf_s(buffer, bufferSize, L"%02d:%02d",
+                    st.wHour, st.wMinute);
+            }
+        }
+    }
+    else if (g_mode == 1) {
+        /* 正计时 */
+        if (!g_stopwatchRunning) {
+            swprintf_s(buffer, bufferSize, L"00:00:00");
+        }
+        else {
+            ULONGLONG elapsed = GetTickCount64() - g_stopwatchStart;
+            int hours = (int)(elapsed / 3600000ULL);
+            int mins = (int)((elapsed % 3600000ULL) / 60000ULL);
+            int secs = (int)((elapsed % 60000ULL) / 1000ULL);
+            swprintf_s(buffer, bufferSize, L"%02d:%02d:%02d", hours, mins, secs);
+        }
+    }
+    else if (g_mode == 2) {
+        /* 倒计时 */
+        ULONGLONG now = GetTickCount64();
+        if (now >= g_countdownEnd) {
+            swprintf_s(buffer, bufferSize, L"00:00:00");
+        }
+        else {
+            ULONGLONG remaining = g_countdownEnd - now;
+            int hours = (int)(remaining / 3600000ULL);
+            int mins = (int)((remaining % 3600000ULL) / 60000ULL);
+            int secs = (int)((remaining % 60000ULL) / 1000ULL);
+            swprintf_s(buffer, bufferSize, L"%02d:%02d:%02d", hours, mins, secs);
+        }
     }
 }
 
@@ -64,10 +139,8 @@ void Renderer_DrawClock(HDC hdcDest, int width, int height)
     graphics.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
     graphics.SetCompositingQuality(Gdiplus::CompositingQualityHighQuality);
 
-    /* 【修改】完全透明但保留鼠标命中（Alpha=1） */
     graphics.Clear(Gdiplus::Color(1, 0, 0, 0));
 
-    /* 【修改】仅在移动模式下绘制接近透明的提示方框 */
     if (g_config.movable) {
         float scale = g_config.fontSize / 56.0f;
         int pad = (int)(g_config.framePadding * scale);
@@ -86,7 +159,6 @@ void Renderer_DrawClock(HDC hdcDest, int width, int height)
                 (Gdiplus::REAL)frameH
             );
 
-            /* 接近透明的填充背景（Alpha=20） */
             Gdiplus::SolidBrush fillBrush(
                 Gdiplus::Color(
                     20,
@@ -97,7 +169,6 @@ void Renderer_DrawClock(HDC hdcDest, int width, int height)
             );
             graphics.FillRectangle(&fillBrush, frameRect);
 
-            /* 接近透明的边框（Alpha=40） */
             if (bw > 0) {
                 Gdiplus::Pen framePen(
                     Gdiplus::Color(
@@ -121,11 +192,9 @@ void Renderer_DrawClock(HDC hdcDest, int width, int height)
         }
     }
 
-    /* 准备时间文本 */
     WCHAR timeStr[32];
-    GetTimeString(timeStr, 32);
+    GetDisplayString(timeStr, 32);
 
-    /* 字体创建（PrivateFontCollection） */
     Gdiplus::Font* pFont = NULL;
     Gdiplus::FontFamily* pFamilyArray = NULL;
     BOOL fontCreated = FALSE;
@@ -180,7 +249,6 @@ void Renderer_DrawClock(HDC hdcDest, int width, int height)
         );
     }
 
-    /* 画刷 */
     Gdiplus::SolidBrush brush(
         Gdiplus::Color(
             g_config.alpha,
@@ -190,7 +258,6 @@ void Renderer_DrawClock(HDC hdcDest, int width, int height)
         )
     );
 
-    /* 文本布局：水平垂直居中 */
     Gdiplus::StringFormat format;
     format.SetAlignment(Gdiplus::StringAlignmentCenter);
     format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
@@ -217,7 +284,6 @@ void Renderer_DrawClock(HDC hdcDest, int width, int height)
     delete pFont;
     delete[] pFamilyArray;
 
-    /* 输出到目标 DC */
     Gdiplus::Graphics destGraphics(hdcDest);
     destGraphics.DrawImage(&bitmap, 0, 0);
 }

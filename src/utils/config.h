@@ -18,8 +18,9 @@ extern "C" {
         COLORREF textColor;
         BYTE    alpha;
         BOOL    showSeconds;
+        int     hourFormat;
         BOOL    topMost;
-        BOOL    movable;        /* 【新增】FALSE=固定, TRUE=移动 */
+        BOOL    movable;
         WCHAR   fontName[64];
         WCHAR   fontFile[MAX_PATH];
 
@@ -29,6 +30,11 @@ extern "C" {
         COLORREF frameColor;
         COLORREF frameFillColor;
         BYTE     frameAlpha;
+
+        int      mode;               /* 0=当前时间, 1=正计时, 2=倒计时 */
+        int      countdownHours;
+        int      countdownMinutes;
+        int      countdownSeconds;
     } AppConfig;
 
     extern AppConfig g_config;

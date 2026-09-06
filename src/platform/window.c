@@ -5,6 +5,7 @@
 #include "trayicon.h"
 #include "../ui/fontmenu.h"
 #include "../ui/colorpicker.h"
+#include "../ui/countdown.h"
 #include <windowsx.h>
 #include <dwmapi.h>
 
@@ -23,11 +24,48 @@
 #define DWMWCP_ROUND      2
 #endif
 
+#ifndef MN_GETHMENU
+#define MN_GETHMENU 0x01E1
+#endif
+
 HINSTANCE g_hInstance = NULL;
 HWND      g_hClockWnd = NULL;
 
 static POINT g_dragStartPt = { 0 };
 static RECT  g_dragStartRc = { 0 };
+
+/* 托盘菜单句柄（在菜单显示期间有效，用于 WM_COMMAND 中实时更新） */
+static HMENU g_hTrayMenu = NULL;
+static HMENU g_hDispMenu = NULL;
+static HMENU g_hModeMenu = NULL;
+static BOOL  g_bTrayExitPending = FALSE;
+
+/* 菜单消息钩子：点击菜单项（含子菜单）时不关闭菜单 */
+static HHOOK g_hMenuHook = NULL;
+
+static LRESULT CALLBACK MenuFilterHook(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    if (nCode == MSGF_MENU) {
+        MSG* pMsg = (MSG*)lParam;
+        if (pMsg->message == WM_LBUTTONUP) {
+            HWND hMenuWnd = pMsg->hwnd;
+            HMENU hMenu = (HMENU)SendMessageW(hMenuWnd, MN_GETHMENU, 0, 0);
+            if (hMenu) {
+                POINT pt = pMsg->pt;
+                ScreenToClient(hMenuWnd, &pt);
+                int idx = MenuItemFromPoint(hMenuWnd, hMenu, pt);
+                if (idx >= 0) {
+                    UINT id = GetMenuItemID(hMenu, idx);
+                    if (id != (UINT)-1 && id != 0) {
+                        PostMessageW(g_hClockWnd, WM_COMMAND, MAKEWPARAM(id, 0), 0);
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+    return CallNextHookEx(g_hMenuHook, nCode, wParam, lParam);
+}
 
 ATOM RegisterClockWindowClass(HINSTANCE hInstance)
 {
@@ -50,7 +88,6 @@ HWND CreateClockWindow(HINSTANCE hInstance)
     if (g_config.topMost) {
         dwExStyle |= WS_EX_TOPMOST;
     }
-    /* 【关键】已固定状态：添加 WS_EX_TRANSPARENT，鼠标穿透到下层窗口 */
     if (!g_config.movable) {
         dwExStyle |= WS_EX_TRANSPARENT;
     }
@@ -69,9 +106,13 @@ HWND CreateClockWindow(HINSTANCE hInstance)
 
     if (hWnd) {
         g_hClockWnd = hWnd;
-        /* 移动模式启用圆角，固定模式禁用（避免实线边缘） */
         int cornerPref = g_config.movable ? DWMWCP_ROUND : DWMWCP_DONOTROUND;
         DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPref, sizeof(cornerPref));
+
+        if (!g_config.topMost) {
+            SetWindowPos(hWnd, HWND_BOTTOM, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
     }
 
     return hWnd;
@@ -141,84 +182,212 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         }
         return 0;
 
+    case WM_COMMAND:
+    {
+        UINT id = LOWORD(wParam);
+
+        if (lParam == 0) {
+            switch (id) {
+            case ID_MENU_EXIT:
+                g_bTrayExitPending = TRUE;
+                break;
+
+            case ID_MENU_COLOR_VALUE:
+                ColorValueInput_Show(g_hClockWnd);
+                break;
+
+            case ID_MENU_COLOR_PANEL:
+                ColorPicker_Show(g_hClockWnd);
+                break;
+
+            case ID_MENU_MODE_CURRENT:
+                g_config.mode = 0;
+                Renderer_SetMode(0);
+                Config_Save();
+                UpdateLayeredWindowContent(g_hClockWnd);
+                if (g_hModeMenu) {
+                    CheckMenuItem(g_hModeMenu, ID_MENU_MODE_CURRENT, MF_BYCOMMAND | MF_CHECKED);
+                    CheckMenuItem(g_hModeMenu, ID_MENU_MODE_STOPWATCH, MF_BYCOMMAND | MF_UNCHECKED);
+                    CheckMenuItem(g_hModeMenu, ID_MENU_MODE_COUNTDOWN, MF_BYCOMMAND | MF_UNCHECKED);
+                }
+                break;
+
+            case ID_MENU_MODE_STOPWATCH:
+                StopwatchStart_Show(g_hClockWnd);
+                break;
+
+            case ID_MENU_MODE_COUNTDOWN:
+                CountdownSettings_Show(g_hClockWnd);
+                break;
+
+            case ID_MENU_MODE_24H:
+                g_config.hourFormat = 0;
+                Config_Save();
+                UpdateLayeredWindowContent(g_hClockWnd);
+                if (g_hDispMenu) {
+                    CheckMenuItem(g_hDispMenu, ID_MENU_MODE_24H, MF_BYCOMMAND | MF_CHECKED);
+                    CheckMenuItem(g_hDispMenu, ID_MENU_MODE_12H, MF_BYCOMMAND | MF_UNCHECKED);
+                }
+                break;
+
+            case ID_MENU_MODE_12H:
+                g_config.hourFormat = 1;
+                Config_Save();
+                UpdateLayeredWindowContent(g_hClockWnd);
+                if (g_hDispMenu) {
+                    CheckMenuItem(g_hDispMenu, ID_MENU_MODE_24H, MF_BYCOMMAND | MF_UNCHECKED);
+                    CheckMenuItem(g_hDispMenu, ID_MENU_MODE_12H, MF_BYCOMMAND | MF_CHECKED);
+                }
+                break;
+
+            case ID_MENU_MODE_SECONDS:
+                g_config.showSeconds = !g_config.showSeconds;
+                Config_Save();
+                UpdateLayeredWindowContent(g_hClockWnd);
+                if (g_hDispMenu) {
+                    CheckMenuItem(g_hDispMenu, ID_MENU_MODE_SECONDS,
+                        MF_BYCOMMAND | (g_config.showSeconds ? MF_CHECKED : MF_UNCHECKED));
+                    ModifyMenuW(g_hDispMenu, ID_MENU_MODE_SECONDS, MF_BYCOMMAND | MF_STRING,
+                        ID_MENU_MODE_SECONDS, g_config.showSeconds ? L"显示秒" : L"不显示秒");
+                }
+                break;
+
+            case ID_MENU_TOGGLE_TOPMOST:
+                g_config.topMost = !g_config.topMost;
+                Config_Save();
+                SetWindowPos(hWnd,
+                    g_config.topMost ? HWND_TOPMOST : HWND_BOTTOM,
+                    0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                /* 【改动】只更新勾选标记，不再切换文字 */
+                if (g_hTrayMenu) {
+                    CheckMenuItem(g_hTrayMenu, ID_MENU_TOGGLE_TOPMOST,
+                        MF_BYCOMMAND | (g_config.topMost ? MF_CHECKED : MF_UNCHECKED));
+                }
+                break;
+
+            case ID_MENU_TOGGLE_MOVE:
+                g_config.movable = !g_config.movable;
+                Config_Save();
+
+                {
+                    LONG_PTR exStyle = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+                    if (g_config.movable) {
+                        exStyle &= ~WS_EX_TRANSPARENT;
+                    }
+                    else {
+                        exStyle |= WS_EX_TRANSPARENT;
+                    }
+                    SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
+
+                    int cornerPref = g_config.movable ? DWMWCP_ROUND : DWMWCP_DONOTROUND;
+                    DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPref, sizeof(cornerPref));
+
+                    SetWindowPos(hWnd, NULL, 0, 0, 0, 0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
+                }
+
+                if (g_hTrayMenu) {
+                    ModifyMenuW(g_hTrayMenu, ID_MENU_TOGGLE_MOVE, MF_BYCOMMAND | MF_STRING,
+                        ID_MENU_TOGGLE_MOVE, g_config.movable ? L"正在移动" : L"已固定");
+                }
+                UpdateLayeredWindowContent(g_hClockWnd);
+                break;
+
+            case ID_MENU_OPEN_FONT_FOLDER:
+                OpenFontsFolder();
+                break;
+
+            default:
+                if (id >= ID_MENU_FONT_BASE && id <= ID_MENU_FONT_MAX) {
+                    HandleFontMenuCommand(id);
+                }
+                break;
+            }
+        }
+        return 0;
+    }
+
     case WM_TRAYICON:
         if (lParam == WM_RBUTTONUP) {
             HMENU hMenu = CreatePopupMenu();
+            g_hTrayMenu = hMenu;
 
+            /* 1. 字体 */
             HMENU hFontMenu = BuildFontSubmenu();
             if (hFontMenu) {
                 AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hFontMenu, L"字体");
-                AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
             }
 
+            /* 2. 颜色 */
             HMENU hColorMenu = CreatePopupMenu();
             AppendMenuW(hColorMenu, MF_STRING, ID_MENU_COLOR_VALUE, L"颜色值");
             AppendMenuW(hColorMenu, MF_STRING, ID_MENU_COLOR_PANEL, L"颜色面板");
             AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hColorMenu, L"颜色");
+
+            /* 3. 显示 */
+            HMENU hDispMenu = CreatePopupMenu();
+            g_hDispMenu = hDispMenu;
+            AppendMenuW(hDispMenu, MF_STRING | (g_config.hourFormat == 0 ? MF_CHECKED : 0),
+                ID_MENU_MODE_24H, L"24小时制");
+            AppendMenuW(hDispMenu, MF_STRING | (g_config.hourFormat == 1 ? MF_CHECKED : 0),
+                ID_MENU_MODE_12H, L"12小时制");
+            AppendMenuW(hDispMenu, MF_SEPARATOR, 0, NULL);
+            AppendMenuW(hDispMenu, MF_STRING | (g_config.showSeconds ? MF_CHECKED : 0),
+                ID_MENU_MODE_SECONDS, g_config.showSeconds ? L"显示秒" : L"不显示秒");
+            AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hDispMenu, L"显示");
+
+            /* 分隔线：显示 与 模式 之间 */
             AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
 
-            /* 【修改】菜单显示当前状态：正在移动 / 已固定 */
-            WCHAR toggleText[32];
-            if (g_config.movable) {
-                wcscpy_s(toggleText, 32, L"正在移动");
-            }
-            else {
-                wcscpy_s(toggleText, 32, L"已固定");
-            }
-            AppendMenuW(hMenu, MF_STRING, ID_MENU_TOGGLE_MOVE, toggleText);
+            /* 4. 模式 */
+            HMENU hModeMenu = CreatePopupMenu();
+            g_hModeMenu = hModeMenu;
+            AppendMenuW(hModeMenu, MF_STRING | (g_config.mode == 0 ? MF_CHECKED : 0),
+                ID_MENU_MODE_CURRENT, L"当前时间");
+            AppendMenuW(hModeMenu, MF_STRING | (g_config.mode == 1 ? MF_CHECKED : 0),
+                ID_MENU_MODE_STOPWATCH, L"正计时");
+            AppendMenuW(hModeMenu, MF_STRING | (g_config.mode == 2 ? MF_CHECKED : 0),
+                ID_MENU_MODE_COUNTDOWN, L"倒计时");
+            AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hModeMenu, L"模式");
+
+            /* 5. 置顶 */
+            /* 【改动】文字固定为"置顶"，通过 MF_CHECKED 表示状态 */
+            AppendMenuW(hMenu, MF_STRING | (g_config.topMost ? MF_CHECKED : 0),
+                ID_MENU_TOGGLE_TOPMOST, L"置顶");
+
+            /* 6. 固定 */
+            AppendMenuW(hMenu, MF_STRING, ID_MENU_TOGGLE_MOVE,
+                g_config.movable ? L"正在移动" : L"已固定");
+
+            /* 分隔线：固定 与 退出 之间 */
             AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
 
+            /* 7. 退出 */
             AppendMenuW(hMenu, MF_STRING, ID_MENU_EXIT, L"退出");
 
             POINT pt;
             GetCursorPos(&pt);
             SetForegroundWindow(hWnd);
 
-            int cmd = TrackPopupMenu(
-                hMenu,
-                TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
-                pt.x, pt.y, 0, hWnd, NULL
-            );
+            g_bTrayExitPending = FALSE;
+            g_hMenuHook = SetWindowsHookEx(WH_MSGFILTER, MenuFilterHook,
+                g_hInstance, GetCurrentThreadId());
+
+            TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN,
+                pt.x, pt.y, 0, hWnd, NULL);
+
+            UnhookWindowsHookEx(g_hMenuHook);
+            g_hMenuHook = NULL;
 
             DestroyMenu(hMenu);
+            g_hTrayMenu = NULL;
+            g_hDispMenu = NULL;
+            g_hModeMenu = NULL;
 
-            if (cmd == ID_MENU_EXIT) {
+            if (g_bTrayExitPending) {
+                g_bTrayExitPending = FALSE;
                 DestroyWindow(hWnd);
-            }
-            else if (cmd == ID_MENU_COLOR_VALUE) {
-                ColorValueInput_Show(g_hClockWnd);
-            }
-            else if (cmd == ID_MENU_COLOR_PANEL) {
-                ColorPicker_Show(g_hClockWnd);
-            }
-            else if (cmd == ID_MENU_TOGGLE_MOVE) {
-                g_config.movable = !g_config.movable;
-                Config_Save();
-
-                /* 【关键】动态修改窗口扩展样式：切换鼠标穿透状态 */
-                LONG_PTR exStyle = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
-                if (g_config.movable) {
-                    /* 切换到移动模式：移除透明，开始接收鼠标 */
-                    exStyle &= ~WS_EX_TRANSPARENT;
-                }
-                else {
-                    /* 切换到固定模式：添加透明，鼠标穿透到下层 */
-                    exStyle |= WS_EX_TRANSPARENT;
-                }
-                SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
-
-                /* 同步更新 DWM 圆角 */
-                int cornerPref = g_config.movable ? DWMWCP_ROUND : DWMWCP_DONOTROUND;
-                DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &cornerPref, sizeof(cornerPref));
-
-                /* 强制刷新窗口样式（必须带 SWP_FRAMECHANGED） */
-                SetWindowPos(hWnd, NULL, 0, 0, 0, 0,
-                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE);
-
-                UpdateLayeredWindowContent(g_hClockWnd);
-            }
-            else if (cmd >= ID_MENU_FONT_BASE && cmd <= ID_MENU_FONT_MAX) {
-                HandleFontMenuCommand(cmd);
             }
         }
         else if (lParam == WM_LBUTTONDBLCLK) {
@@ -228,7 +397,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
 
     case WM_LBUTTONDOWN:
-        /* 仅在移动模式下允许拖拽 */
         if (g_config.movable) {
             SetCapture(hWnd);
             GetCursorPos(&g_dragStartPt);
@@ -264,8 +432,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 
     case WM_MOUSEWHEEL:
     {
-        /* 固定状态下：WS_EX_TRANSPARENT 已使鼠标穿透，本消息不会进入。
-         * 保留判断作为保险。 */
         if (!g_config.movable) {
             return 0;
         }
@@ -280,7 +446,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         if (newSize != g_config.fontSize) {
             g_config.fontSize = newSize;
 
-            /* 窗口尺寸联动缩放 */
             RECT rc;
             GetWindowRect(hWnd, &rc);
             int cx = rc.left + (rc.right - rc.left) / 2;

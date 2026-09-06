@@ -22,10 +22,11 @@ void Config_SetDefaults(void)
     g_config.height = 120;
     g_config.fontSize = 56;
     g_config.textColor = RGB(255, 255, 255);
-    g_config.alpha = 255;
+    g_config.alpha = 240;
     g_config.showSeconds = TRUE;
+    g_config.hourFormat = 0;
     g_config.topMost = TRUE;
-    g_config.movable = FALSE;         /* 【新增】默认固定状态 */
+    g_config.movable = FALSE;
     wcscpy_s(g_config.fontName, 64, L"Microsoft YaHei UI");
     g_config.fontFile[0] = L'\0';
 
@@ -35,6 +36,12 @@ void Config_SetDefaults(void)
     g_config.frameColor = RGB(255, 255, 255);
     g_config.frameFillColor = RGB(20, 20, 20);
     g_config.frameAlpha = 180;
+
+    /* 【新增】默认模式与倒计时时间 */
+    g_config.mode = 0;
+    g_config.countdownHours = 0;
+    g_config.countdownMinutes = 5;
+    g_config.countdownSeconds = 0;
 }
 
 static COLORREF ParseHexColor(const WCHAR* hexStr)
@@ -64,11 +71,12 @@ void Config_Load(void)
     g_config.width = GetPrivateProfileIntW(L"Window", L"Width", g_config.width, configPath);
     g_config.height = GetPrivateProfileIntW(L"Window", L"Height", g_config.height, configPath);
     g_config.topMost = GetPrivateProfileIntW(L"Window", L"TopMost", g_config.topMost, configPath);
-    g_config.movable = GetPrivateProfileIntW(L"Window", L"Movable", g_config.movable, configPath); /* 【新增】 */
+    g_config.movable = GetPrivateProfileIntW(L"Window", L"Movable", g_config.movable, configPath);
 
     g_config.fontSize = GetPrivateProfileIntW(L"Appearance", L"FontSize", g_config.fontSize, configPath);
     g_config.alpha = (BYTE)GetPrivateProfileIntW(L"Appearance", L"Alpha", g_config.alpha, configPath);
     g_config.showSeconds = GetPrivateProfileIntW(L"Appearance", L"ShowSeconds", g_config.showSeconds, configPath);
+    g_config.hourFormat = GetPrivateProfileIntW(L"Appearance", L"HourFormat", g_config.hourFormat, configPath);
 
     GetPrivateProfileStringW(L"Appearance", L"TextColor", L"FFFFFF", buf, 256, configPath);
     g_config.textColor = ParseHexColor(buf);
@@ -87,6 +95,12 @@ void Config_Load(void)
     g_config.frameFillColor = ParseHexColor(buf);
 
     g_config.frameAlpha = (BYTE)GetPrivateProfileIntW(L"Frame", L"FrameAlpha", g_config.frameAlpha, configPath);
+
+    /* 【新增】读取模式与倒计时设定 */
+    g_config.mode = GetPrivateProfileIntW(L"Mode", L"Mode", g_config.mode, configPath);
+    g_config.countdownHours = GetPrivateProfileIntW(L"Mode", L"CountdownHours", g_config.countdownHours, configPath);
+    g_config.countdownMinutes = GetPrivateProfileIntW(L"Mode", L"CountdownMinutes", g_config.countdownMinutes, configPath);
+    g_config.countdownSeconds = GetPrivateProfileIntW(L"Mode", L"CountdownSeconds", g_config.countdownSeconds, configPath);
 }
 
 void Config_Save(void)
@@ -105,8 +119,8 @@ void Config_Save(void)
     WritePrivateProfileStringW(L"Window", L"Height", buf, configPath);
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.topMost);
     WritePrivateProfileStringW(L"Window", L"TopMost", buf, configPath);
-    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.movable);      /* 【新增】 */
-    WritePrivateProfileStringW(L"Window", L"Movable", buf, configPath); /* 【新增】 */
+    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.movable);
+    WritePrivateProfileStringW(L"Window", L"Movable", buf, configPath);
 
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.fontSize);
     WritePrivateProfileStringW(L"Appearance", L"FontSize", buf, configPath);
@@ -114,6 +128,8 @@ void Config_Save(void)
     WritePrivateProfileStringW(L"Appearance", L"Alpha", buf, configPath);
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.showSeconds);
     WritePrivateProfileStringW(L"Appearance", L"ShowSeconds", buf, configPath);
+    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.hourFormat);
+    WritePrivateProfileStringW(L"Appearance", L"HourFormat", buf, configPath);
 
     ColorToHex(g_config.textColor, buf, 256);
     WritePrivateProfileStringW(L"Appearance", L"TextColor", buf, configPath);
@@ -135,4 +151,13 @@ void Config_Save(void)
 
     _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.frameAlpha);
     WritePrivateProfileStringW(L"Frame", L"FrameAlpha", buf, configPath);
+
+    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.mode);
+    WritePrivateProfileStringW(L"Mode", L"Mode", buf, configPath);
+    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.countdownHours);
+    WritePrivateProfileStringW(L"Mode", L"CountdownHours", buf, configPath);
+    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.countdownMinutes);
+    WritePrivateProfileStringW(L"Mode", L"CountdownMinutes", buf, configPath);
+    _snwprintf_s(buf, 256, _TRUNCATE, L"%d", g_config.countdownSeconds);
+    WritePrivateProfileStringW(L"Mode", L"CountdownSeconds", buf, configPath);
 }
