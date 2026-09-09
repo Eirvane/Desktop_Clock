@@ -36,8 +36,6 @@ void Config_SetDefaults(void)
     g_config.frameColor = RGB(255, 255, 255);
     g_config.frameFillColor = RGB(20, 20, 20);
     g_config.frameAlpha = 180;
-
-    /* 【新增】默认模式与倒计时时间 */
     g_config.mode = 0;
     g_config.countdownHours = 0;
     g_config.countdownMinutes = 5;
@@ -95,8 +93,6 @@ void Config_Load(void)
     g_config.frameFillColor = ParseHexColor(buf);
 
     g_config.frameAlpha = (BYTE)GetPrivateProfileIntW(L"Frame", L"FrameAlpha", g_config.frameAlpha, configPath);
-
-    /* 【新增】读取模式与倒计时设定 */
     g_config.mode = GetPrivateProfileIntW(L"Mode", L"Mode", g_config.mode, configPath);
     g_config.countdownHours = GetPrivateProfileIntW(L"Mode", L"CountdownHours", g_config.countdownHours, configPath);
     g_config.countdownMinutes = GetPrivateProfileIntW(L"Mode", L"CountdownMinutes", g_config.countdownMinutes, configPath);
