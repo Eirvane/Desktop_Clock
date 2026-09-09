@@ -54,7 +54,6 @@ int WINAPI wWinMain(
 
     Config_Load();
 
-    /* 【新增】恢复上次保存的模式 */
     Renderer_SetMode(g_config.mode);
     if (g_config.mode == 2) {
         Renderer_StartCountdown(
