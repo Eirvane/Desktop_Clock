@@ -365,3 +365,32 @@ FodyWeavers.xsd
 
 build/
 package/
+
+# ============================================================
+# 项目特定忽略规则
+# ============================================================
+
+# 备份文件夹（旧项目文件副本）
+备份/
+
+# 编译输出的可执行文件
+*.exe
+*.ilk
+*.idb
+
+# 运行时生成的配置文件
+*.ini
+
+# 旧解决方案文件（项目已重命名为 Moment）
+Desktop_Clock.slnx
+
+# VS 用户特定文件
+Moment/*.user
+
+# CMake 生成文件
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CPackConfig.cmake
+CPackSourceConfig.cmake
