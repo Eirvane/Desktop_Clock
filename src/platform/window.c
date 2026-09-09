@@ -1,4 +1,4 @@
-﻿#include "window.h"
+#include "window.h"
 #include "../graphics/renderer.h"
 #include "../utils/config.h"
 #include "../utils/utils.h"
@@ -6,6 +6,7 @@
 #include "../ui/fontmenu.h"
 #include "../ui/colorpicker.h"
 #include "../ui/countdown.h"
+#include "../../resource.h"
 #include <windowsx.h>
 #include <dwmapi.h>
 
@@ -38,7 +39,6 @@ static RECT  g_dragStartRc = { 0 };
 static HMENU g_hTrayMenu = NULL;
 static HMENU g_hDispMenu = NULL;
 static HMENU g_hModeMenu = NULL;
-static BOOL  g_bTrayExitPending = FALSE;
 
 /* 菜单消息钩子：点击菜单项（含子菜单）时不关闭菜单 */
 static HHOOK g_hMenuHook = NULL;
@@ -57,8 +57,11 @@ static LRESULT CALLBACK MenuFilterHook(int nCode, WPARAM wParam, LPARAM lParam)
                 if (idx >= 0) {
                     UINT id = GetMenuItemID(hMenu, idx);
                     if (id != (UINT)-1 && id != 0) {
-                        PostMessageW(g_hClockWnd, WM_COMMAND, MAKEWPARAM(id, 0), 0);
-                        return 1;
+                        /* 退出菜单项不拦截，让菜单正常关闭后由 WM_COMMAND 处理 */
+                        if (id != ID_MENU_EXIT) {
+                            PostMessageW(g_hClockWnd, WM_COMMAND, MAKEWPARAM(id, 0), 0);
+                            return 1;
+                        }
                     }
                 }
             }
@@ -189,7 +192,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         if (lParam == 0) {
             switch (id) {
             case ID_MENU_EXIT:
-                g_bTrayExitPending = TRUE;
+                DestroyWindow(hWnd);
                 break;
 
             case ID_MENU_COLOR_VALUE:
@@ -370,12 +373,11 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
             GetCursorPos(&pt);
             SetForegroundWindow(hWnd);
 
-            g_bTrayExitPending = FALSE;
             g_hMenuHook = SetWindowsHookEx(WH_MSGFILTER, MenuFilterHook,
                 g_hInstance, GetCurrentThreadId());
 
-            TrackPopupMenu(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN,
-                pt.x, pt.y, 0, hWnd, NULL);
+            TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN,
+                pt.x, pt.y, hWnd, NULL);
 
             UnhookWindowsHookEx(g_hMenuHook);
             g_hMenuHook = NULL;
@@ -384,11 +386,6 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
             g_hTrayMenu = NULL;
             g_hDispMenu = NULL;
             g_hModeMenu = NULL;
-
-            if (g_bTrayExitPending) {
-                g_bTrayExitPending = FALSE;
-                DestroyWindow(hWnd);
-            }
         }
         else if (lParam == WM_LBUTTONDBLCLK) {
             ShowWindow(hWnd, SW_SHOW);
@@ -472,6 +469,10 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
         }
         return 0;
     }
+
+    case WM_CLOSE:
+        DestroyWindow(hWnd);
+        return 0;
 
     case WM_DESTROY:
         TrayIcon_Remove(hWnd);
