@@ -7,7 +7,7 @@ static ULONG_PTR g_gdiplusToken = 0;
 static Gdiplus::PrivateFontCollection* g_privateFonts = NULL;
 static WCHAR g_loadedFontFile[MAX_PATH] = { 0 };
 
-/* 模式与计时状态 */
+// 模式与计时状态
 static int       g_mode = 0;
 static BOOL      g_stopwatchRunning = FALSE;
 static ULONGLONG g_stopwatchStart = 0;
@@ -51,7 +51,7 @@ extern "C" void Renderer_SetMode(int mode)
 {
     g_mode = mode;
     if (mode == 1) {
-        g_stopwatchRunning = FALSE;   /* 切换到正计时时不自动开始 */
+        g_stopwatchRunning = FALSE;   
     }
 }
 
@@ -69,11 +69,10 @@ extern "C" void Renderer_StartCountdown(int hours, int minutes, int seconds)
     g_countdownEnd = GetTickCount64() + totalMs;
 }
 
-/* 根据当前模式生成显示字符串 */
 static void GetDisplayString(WCHAR* buffer, int bufferSize)
 {
     if (g_mode == 0) {
-        /* 当前时间 */
+        // 当前时间 
         SYSTEMTIME st;
         GetLocalTime(&st);
 
@@ -102,7 +101,7 @@ static void GetDisplayString(WCHAR* buffer, int bufferSize)
         }
     }
     else if (g_mode == 1) {
-        /* 正计时 */
+        // 正计时 
         if (!g_stopwatchRunning) {
             swprintf_s(buffer, bufferSize, L"00:00:00");
         }
@@ -115,7 +114,7 @@ static void GetDisplayString(WCHAR* buffer, int bufferSize)
         }
     }
     else if (g_mode == 2) {
-        /* 倒计时 */
+        // 倒计时 
         ULONGLONG now = GetTickCount64();
         if (now >= g_countdownEnd) {
             swprintf_s(buffer, bufferSize, L"00:00:00");
