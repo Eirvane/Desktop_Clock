@@ -7,9 +7,6 @@
 
 #pragma comment(lib, "comdlg32.lib")
 
-/* ============================================================
- * 颜色值输入窗口 UI 配置
- * ============================================================ */
 #define CVI_WINDOW_WIDTH          320
 #define CVI_WINDOW_HEIGHT         180
 #define CVI_WINDOW_STYLE          (WS_CAPTION | WS_SYSMENU | WS_VISIBLE)
@@ -43,19 +40,14 @@
 #define CVI_TEXT_LABEL            L"颜色值(HEX)："
 #define CVI_TEXT_TITLE            L"设置颜色值"
 
- /* 颜色输入窗口句柄与控件句柄（模块私有） */
 static HWND  g_hColorValueWnd = NULL;
 static HWND  g_hColorValueEdit = NULL;
 static HWND  g_hCviLabel = NULL;
 static HFONT g_hCviUiFont = NULL;
 static HFONT g_hCviEditFont = NULL;
 
-/* 前置声明 */
-static LRESULT CALLBACK ColorValueInputProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-/* ------------------------------------------------------------------ */
-/* HEX 颜色值输入窗口                                                  */
-/* ------------------------------------------------------------------ */
+static LRESULT CALLBACK ColorValueInputProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 void ColorValueInput_Show(HWND hParent)
 {
@@ -85,7 +77,6 @@ void ColorValueInput_Show(HWND hParent)
     );
 
     if (g_hColorValueWnd) {
-        /* 传入半径 12，不再依赖 utils.c 内部宏 */
         ApplyWindowRoundedCorners(g_hColorValueWnd, CVI_CORNER_RADIUS);
         CenterWindowOnParent(g_hColorValueWnd, hParent, CVI_WINDOW_WIDTH, CVI_WINDOW_HEIGHT);
     }
@@ -99,7 +90,6 @@ static LRESULT CALLBACK ColorValueInputProc(HWND hWnd, UINT message, WPARAM wPar
         g_hCviUiFont = CreateUiFont(CVI_UI_FONT_SIZE_PT, CVI_UI_FONT_WEIGHT, CVI_UI_FONT_NAME);
         g_hCviEditFont = CreateUiFont(CVI_EDIT_FONT_SIZE_PT, CVI_EDIT_FONT_WEIGHT, CVI_EDIT_FONT_NAME);
 
-        /* 标签 */
         g_hCviLabel = CreateWindowExW(
             0, L"STATIC", CVI_TEXT_LABEL,
             WS_CHILD | WS_VISIBLE | SS_LEFT,
@@ -111,7 +101,6 @@ static LRESULT CALLBACK ColorValueInputProc(HWND hWnd, UINT message, WPARAM wPar
             SendMessageW(g_hCviLabel, WM_SETFONT, (WPARAM)g_hCviUiFont, TRUE);
         }
 
-        /* 编辑框：预填当前颜色值 */
         g_hColorValueEdit = CreateWindowExW(
             WS_EX_CLIENTEDGE, L"EDIT", L"",
             WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
@@ -130,7 +119,6 @@ static LRESULT CALLBACK ColorValueInputProc(HWND hWnd, UINT message, WPARAM wPar
             SendMessageW(g_hColorValueEdit, WM_SETFONT, (WPARAM)g_hCviEditFont, TRUE);
         }
 
-        /* 确定按钮 */
         HWND hBtnOk = CreateWindowExW(
             0, L"BUTTON", CVI_TEXT_OK,
             WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
@@ -142,7 +130,6 @@ static LRESULT CALLBACK ColorValueInputProc(HWND hWnd, UINT message, WPARAM wPar
             SendMessageW(hBtnOk, WM_SETFONT, (WPARAM)g_hCviUiFont, TRUE);
         }
 
-        /* 取消按钮 */
         HWND hBtnCancel = CreateWindowExW(
             0, L"BUTTON", CVI_TEXT_CANCEL,
             WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
@@ -198,10 +185,6 @@ static LRESULT CALLBACK ColorValueInputProc(HWND hWnd, UINT message, WPARAM wPar
         return DefWindowProcW(hWnd, message, wParam, lParam);
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* 系统颜色选择对话框（ChooseColor）                                   */
-/* ------------------------------------------------------------------ */
 
 void ColorPicker_Show(HWND hParent)
 {
