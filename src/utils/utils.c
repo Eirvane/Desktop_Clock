@@ -1,10 +1,6 @@
 ﻿#include "utils.h"
 #include <wchar.h>
-#include <dwmapi.h>   /* DwmSetWindowAttribute 等 */
-
-/* ------------------------------------------------------------------ */
-/* 字体辅助                                                            */
-/* ------------------------------------------------------------------ */
+#include <dwmapi.h> 
 
 HFONT CreateUiFont(int pointSize, LONG weight, const WCHAR* faceName)
 {
@@ -16,13 +12,8 @@ HFONT CreateUiFont(int pointSize, LONG weight, const WCHAR* faceName)
     );
 }
 
-/* ------------------------------------------------------------------ */
-/* 窗口圆角（DWM + HRGN 双保险）                                       */
-/* ------------------------------------------------------------------ */
-
 void ApplyWindowRoundedCorners(HWND hWnd, int radius)
 {
-    /* 方式1：DWM 原生圆角（Win11 / Win10 20H1+，效果最好） */
     HMODULE hDwm = LoadLibraryW(L"dwmapi.dll");
     if (hDwm) {
         typedef HRESULT(WINAPI* DwmSetWindowAttributeFn)(HWND, DWORD, LPCVOID, DWORD);
@@ -35,7 +26,6 @@ void ApplyWindowRoundedCorners(HWND hWnd, int radius)
         FreeLibrary(hDwm);
     }
 
-    /* 方式2：HRGN 圆角（兼容性回退） */
     if (radius > 0) {
         RECT rc;
         GetWindowRect(hWnd, &rc);
@@ -47,10 +37,6 @@ void ApplyWindowRoundedCorners(HWND hWnd, int radius)
         }
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* 窗口居中                                                            */
-/* ------------------------------------------------------------------ */
 
 void CenterWindowOnParent(HWND hWnd, HWND hParent, int width, int height)
 {
@@ -69,10 +55,6 @@ void CenterWindowOnParent(HWND hWnd, HWND hParent, int width, int height)
     }
     SetWindowPos(hWnd, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 }
-
-/* ------------------------------------------------------------------ */
-/* HEX 颜色解析                                                        */
-/* ------------------------------------------------------------------ */
 
 BOOL TryParseHexColorString(const WCHAR* hexStr, COLORREF* outColor)
 {
