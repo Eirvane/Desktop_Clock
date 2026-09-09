@@ -1,12 +1,10 @@
 ﻿#include "countdown.h"
 #include "../platform/window.h"
+#include "../graphics/renderer.h"
 #include "../utils/config.h"
 #include "../utils/utils.h"
 #include <wchar.h>
 
-/* ============================================================
- * 倒计时设置窗口 UI 配置（滚动式 ListBox）
- * ============================================================ */
 #define CDS_WINDOW_WIDTH     300
 #define CDS_WINDOW_HEIGHT    320
 #define CDS_LIST_WIDTH       60
@@ -24,7 +22,6 @@ static HWND  g_hListMin = NULL;
 static HWND  g_hListSec = NULL;
 static HFONT g_hCdsFont = NULL;
 
-/* 向 ListBox 填充 0..maxVal，并选中 selVal */
 static void InitListBox(HWND hList, int maxVal, int selVal)
 {
     WCHAR buf[8];
@@ -42,7 +39,6 @@ static LRESULT CALLBACK CountdownSettingsProc(HWND hWnd, UINT message, WPARAM wP
     {
         g_hCdsFont = CreateUiFont(11, FW_NORMAL, L"Microsoft YaHei");
 
-        /* 标签：时 / 分 / 秒 */
         HWND hLblHour = CreateWindowExW(0, L"STATIC", L"时",
             WS_CHILD | WS_VISIBLE | SS_CENTER,
             30, CDS_MARGIN_TOP, CDS_LIST_WIDTH, CDS_LABEL_HEIGHT,
@@ -56,7 +52,6 @@ static LRESULT CALLBACK CountdownSettingsProc(HWND hWnd, UINT message, WPARAM wP
             190, CDS_MARGIN_TOP, CDS_LIST_WIDTH, CDS_LABEL_HEIGHT,
             hWnd, NULL, g_hInstance, NULL);
 
-        /* 三个滚动列表框 */
         g_hListHour = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", NULL,
             WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT,
             30, CDS_LIST_Y, CDS_LIST_WIDTH, CDS_LIST_HEIGHT,
@@ -83,7 +78,6 @@ static LRESULT CALLBACK CountdownSettingsProc(HWND hWnd, UINT message, WPARAM wP
             SendMessageW(g_hListSec, WM_SETFONT, (WPARAM)g_hCdsFont, TRUE);
         }
 
-        /* 确定 / 取消 按钮 */
         HWND hBtnOk = CreateWindowExW(0, L"BUTTON", L"确定",
             WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
             50, CDS_BTN_Y, CDS_BTN_WIDTH, CDS_BTN_HEIGHT,
@@ -111,7 +105,6 @@ static LRESULT CALLBACK CountdownSettingsProc(HWND hWnd, UINT message, WPARAM wP
             if (m == LB_ERR) m = 0;
             if (s == LB_ERR) s = 0;
 
-            /* 保存设定并切换到倒计时模式 */
             g_config.countdownHours = h;
             g_config.countdownMinutes = m;
             g_config.countdownSeconds = s;
@@ -180,9 +173,6 @@ void CountdownSettings_Show(HWND hParent)
     }
 }
 
-/* ============================================================
- * 正计时开始窗口
- * ============================================================ */
 #define SSW_WINDOW_WIDTH     260
 #define SSW_WINDOW_HEIGHT    160
 #define SSW_BTN_WIDTH        100
@@ -199,7 +189,6 @@ static LRESULT CALLBACK StopwatchStartProc(HWND hWnd, UINT message, WPARAM wPara
     {
         g_hSswFont = CreateUiFont(12, FW_NORMAL, L"Microsoft YaHei");
 
-        /* 提示标签 */
         HWND hLabel = CreateWindowExW(0, L"STATIC", L"点击开始按钮启动正计时",
             WS_CHILD | WS_VISIBLE | SS_CENTER,
             20, 20, SSW_WINDOW_WIDTH - 40, 24,
@@ -208,7 +197,6 @@ static LRESULT CALLBACK StopwatchStartProc(HWND hWnd, UINT message, WPARAM wPara
             SendMessageW(hLabel, WM_SETFONT, (WPARAM)g_hSswFont, TRUE);
         }
 
-        /* 开始按钮 */
         HWND hBtnStart = CreateWindowExW(0, L"BUTTON", L"开始",
             WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
             (SSW_WINDOW_WIDTH - SSW_BTN_WIDTH) / 2, SSW_BTN_Y,
@@ -225,7 +213,7 @@ static LRESULT CALLBACK StopwatchStartProc(HWND hWnd, UINT message, WPARAM wPara
         int id = LOWORD(wParam);
         if (id == IDOK) {
             g_config.mode = 1;
-            Renderer_SetMode(1);        /* 【修复】先设置模式，再启动计时 */
+            Renderer_SetMode(1);       
             Renderer_StartStopwatch();
             Config_Save();
             UpdateLayeredWindowContent(g_hClockWnd);
