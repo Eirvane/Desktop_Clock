@@ -132,8 +132,14 @@ cmake --build build --config Release
 
 ## 🥇支持
 ---
-**特别感谢[Tsukiyig]((https://github.com/Tsukiyig)提供的图标设计**
-<img src="https://avatars.githubusercontent.com/u/325215227?v=4" width="100" alt="头像">
+**特别感谢[Tsukiyig](https://github.com/Tsukiyig)提供的图标设计**
+
+<div align="left">
+  <a href="https://github.com/Tsukiyig">
+    <img src="https://avatars.githubusercontent.com/u/325215227?v=4" width="100" />
+  </a>
+</div>
+
 [Tsukiyig](https://github.com/Tsukiyig)
 
 **本项目大量源代码均为AI生成**
