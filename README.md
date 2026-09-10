@@ -3,7 +3,9 @@
 </div>
 
 <h1 align="center">Moment - 桌面时钟    一款运行与Windows的桌面时钟应用</h1>
+
 ___
+
 <p align="center"> <b>支持显示当前时间，正向计时，自定义倒计时</b> </p>
 
 <p align="center"> 
@@ -12,8 +14,10 @@ ___
 <a href="https://cmake.org/"><img src="https://img.shields.io/badge/CMake-064F8C?logo=cmake&logoColor=white" alt="CMake"/></a>
 <a href="https://github.com/Eirvane/Moment/releases"><img src="https://img.shields.io/github/v/release/Eirvane/Moment?color=green&label=Release" alt="Release"/></a>
 </p>
+
 ## ✨简介
----
+
+___
 
 **桌面时钟 (Moment)** 一款专为 Windows 设计的极简桌面时钟。不仅支持实时显示北京时间，还内置了灵活的正向/倒计时模式。你可以自由调整字体大小、颜色及窗口置顶状态，所有设置均可通过系统托盘右键快速访问，让时间管理既美观又高效。
 
@@ -46,7 +50,8 @@ ___
     - **正在移动** ：主窗口取消锁定，出现低透明度窗口及边框，此时可移动主窗口。鼠标停悬在窗口上方滚动滚轮可对数字大小进行更改
 
 - **字体**      设置时钟主窗口的数字字体显示
-     内置字体``Abel-Regular-2.ttf`` ``BebasNeue-1.otf`` ``BebasNeue-1.otf`` ``DS-DIGIB.ttf`` ``DS-DIGIT.ttf`` ``NationalPark-Regular.otf`` 
+
+   内置字体``Abel-Regular-2.ttf`` ``BebasNeue-1.otf`` ``BebasNeue-1.otf`` ``DS-DIGIB.ttf`` ``DS-DIGIT.ttf`` ``NationalPark-Regular.otf`` 
      ``OPPO Sans.ttf`` ``Pixelify Sans Medium Essence.ttf`` ``Rousseau-Deco.ttf`` ``SC Regular.ttf``
      
      添加字体可在二级窗口点击**打开字体文件夹** ，将需要添加的字体拖进/复制进该目录
@@ -100,8 +105,9 @@ cmake --build build --config Release
 
 ## 🗂️ 项目结构
 ---
+
 ```
-```Desktop_Clock/
+Desktop_Clock/
 ├── src/
 │   ├── core/
 │   │   └── main.c                程序入口：COM/GDI+ 初始化、DPI 感知、主消息循环
