@@ -107,7 +107,7 @@ cmake --build build --config Release
 ---
 
 ```
-Desktop_Clock/
+Moment/
 ├── src/
 │   ├── core/
 │   │   └── main.c                程序入口：COM/GDI+ 初始化、DPI 感知、主消息循环
